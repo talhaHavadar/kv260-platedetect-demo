@@ -1,0 +1,81 @@
+name: kv260-platedetect-demo # you probably want to 'snapcraft register <name>'
+base: core22 # the base snap is the execution environment for this snap
+version: '0.1' # just for humans, typically '1.2+git' or '1.3.2'
+summary: Single-line elevator pitch for your amazing snap # 79 char long summary
+description: |
+  This is my-snap's description. You have a paragraph or two to tell the
+  most important story about your snap. Keep it under 100 words though,
+  we live in tweetspace and your description wants to look good in the snap
+  store.
+
+grade: devel # must be 'stable' to release into candidate/stable channels
+confinement: devmode # use 'strict' once you have the right plugs and slots
+
+architectures:
+  - arm64
+
+package-repositories:
+  - type: apt
+    suites: [jammy-limerick]
+    components: [public]
+    url: http://oem.archive.canonical.com/updates
+    key-id: 236252602787D6BDC2336849F9FDA6BED73CDC22
+  - type: apt
+    ppa: ubuntu-xilinx/sdk
+  - type: apt
+    ppa: xilinx-apps/ppa
+
+plugs:
+  firmwares-dir:
+    interface: content
+    content: firmwares
+    target: $SNAP
+
+hooks:
+  configure:
+    plugs:
+      - firmwares-dir
+
+apps:
+  jpeg:
+    command: bin/test_jpeg_platedetect $SNAP/models/plate_detect.xmodel
+    environment:
+      LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib:$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET:$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/blas:$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/lapack
+
+parts:
+  kv260-platedetect-demo:
+    # See 'snapcraft plugins'
+    plugin: nil
+    source: src
+    override-build: |
+      ./build.sh
+      cp test_*_platedetect $SNAPCRAFT_PART_INSTALL
+    build-packages:
+      - vitis-ai-library
+      - libgoogle-glog-dev
+      - libopencv-dev
+      - libprotobuf-dev
+      - libjson-c-dev
+    stage-packages:
+      - vitis-ai-runtime
+      - vitis-ai-library
+      - libblas3
+    organize:
+      test_*_platedetect: bin/
+    # stage:
+    #   - bin/test_jpeg_platedetect
+    #   - bin/test_video_platedetect
+  platedetect-xmodel:
+    plugin: dump
+    source: https://www.xilinx.com/bin/public/openDownload?filename=plate_detect-kv260_DPUCZDX8G_ISA1_B3136-r2.5.0.tar.gz
+    override-build: |
+      cp plate_detect.* $SNAPCRAFT_PART_INSTALL
+    organize:
+      plate_detect.*: models/
+
+  nlp-smartvision-bitstream:
+    plugin: nil
+    stage-packages:
+      - xlnx-firmware-kv260-nlp-smartvision
+    organize:
+      lib/firmware/xilinx/kv260-nlp-smartvision: firmware/kv260-nlp-smartvision
